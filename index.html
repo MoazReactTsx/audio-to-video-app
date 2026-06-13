@@ -1,48 +1,221 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AudioViz Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="global.css">
+<style>
+/* ── EXTRA STYLES FOR NEW FEATURES ── */
+
+/* Canvas Size Picker */
+.aspect-btns { display:flex; gap:.3rem; flex-wrap:wrap; }
+.asp-btn {
+  padding:.28rem .55rem; border:1px solid var(--border); border-radius:6px;
+  background:transparent; color:var(--dim); cursor:pointer; font-size:.7rem;
+  font-weight:600; transition:all .15s; white-space:nowrap;
+}
+.asp-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+.asp-btn.on { background:var(--cyan); border-color:var(--cyan); color:#000; }
+
+/* Custom size inputs */
+.custom-size-row {
+  display:flex; gap:.35rem; align-items:center; margin-top:.4rem;
+}
+.custom-size-row input[type=number] {
+  width:60px; padding:.25rem .35rem; background:var(--s2);
+  border:1px solid var(--border); border-radius:6px;
+  color:var(--text); font-size:.72rem; outline:none;
+  -webkit-appearance:none;
+}
+.custom-size-row input[type=number]:focus { border-color:var(--cyan); }
+.custom-size-row span { color:var(--dim); font-size:.8rem; }
+.apply-size-btn {
+  padding:.25rem .55rem; background:var(--cyan); border:none;
+  border-radius:6px; color:#000; font-size:.7rem; font-weight:700; cursor:pointer;
+}
+
+/* Undo / Redo buttons */
+.hist-btn {
+  width:32px; height:32px; border:1px solid var(--border); border-radius:8px;
+  background:var(--s2); color:var(--dim); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.9rem; transition:all .15s;
+}
+.hist-btn:hover:not(:disabled) { border-color:var(--purple); color:var(--purple); }
+.hist-btn:disabled { opacity:.3; cursor:not-allowed; }
+
+/* Reset button */
+.reset-btn {
+  padding:.38rem .75rem; border:1px solid var(--border); border-radius:8px;
+  background:transparent; color:var(--dim); font-size:.75rem; font-weight:600;
+  cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.reset-btn:hover { border-color:var(--red); color:var(--red); }
+
+/* Language toggle */
+.lang-btn {
+  padding:.38rem .65rem; border:1px solid var(--border); border-radius:8px;
+  background:transparent; color:var(--dim); font-size:.75rem; font-weight:700;
+  cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.lang-btn:hover { border-color:var(--magenta); color:var(--magenta); }
+.lang-btn.ar { color:var(--magenta); border-color:var(--magenta); }
+
+/* Image editor section */
+.img-filter-row { display:flex; flex-direction:column; gap:.5rem; }
+
+/* Elements panel */
+.elem-add-row { display:flex; gap:.3rem; flex-wrap:wrap; margin-bottom:.5rem; }
+.elem-type-btn {
+  flex:1; min-width:60px; padding:.3rem .4rem; border:1px solid var(--border); border-radius:8px;
+  background:var(--s2); color:var(--dim); cursor:pointer; font-size:.7rem;
+  font-weight:600; transition:all .15s; text-align:center;
+}
+.elem-type-btn:hover { border-color:var(--green); color:var(--green); }
+
+/* Element properties modal */
+.elem-modal {
+  display:none; position:fixed; inset:0; z-index:300;
+  background:rgba(0,0,0,.75); backdrop-filter:blur(6px);
+  align-items:center; justify-content:center;
+}
+.elem-modal.show { display:flex; }
+.elem-card {
+  background:var(--s1); border:1px solid var(--border); border-radius:16px;
+  padding:1.5rem; min-width:280px; max-width:340px; width:90%;
+}
+.elem-card h4 { margin-bottom:1rem; font-size:.95rem; font-weight:700; }
+.elem-field { margin-bottom:.75rem; }
+.elem-field label { display:block; font-size:.73rem; color:var(--dim); margin-bottom:.3rem; }
+.elem-field input[type=text],
+.elem-field input[type=number],
+.elem-field select {
+  width:100%; padding:.4rem .55rem; background:var(--s2);
+  border:1px solid var(--border); border-radius:8px;
+  color:var(--text); font-size:.8rem; outline:none;
+}
+.elem-field input[type=text]:focus,
+.elem-field input[type=number]:focus,
+.elem-field select:focus { border-color:var(--purple); }
+.elem-field input[type=color] {
+  width:36px; height:28px; border:none; background:none; cursor:pointer;
+  border-radius:6px; overflow:hidden; padding:0;
+}
+.elem-field-row { display:flex; gap:.5rem; align-items:center; }
+.elem-actions { display:flex; gap:.5rem; margin-top:1rem; }
+.elem-ok-btn {
+  flex:1; padding:.45rem; background:var(--purple); border:none;
+  border-radius:8px; color:#fff; font-weight:700; cursor:pointer;
+}
+.elem-cancel-btn {
+  padding:.45rem .9rem; background:transparent; border:1px solid var(--border);
+  border-radius:8px; color:var(--dim); cursor:pointer;
+}
+
+/* Elements list */
+.elem-list { display:flex; flex-direction:column; gap:.35rem; }
+.elem-item {
+  display:flex; align-items:center; gap:.4rem;
+  background:var(--s2); border:1px solid var(--border); border-radius:8px;
+  padding:.35rem .5rem; font-size:.73rem;
+}
+.elem-item-name { flex:1; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.elem-item-icon { font-size:.9rem; }
+.elem-del-btn {
+  width:20px; height:20px; border:none; background:transparent;
+  color:var(--red); cursor:pointer; font-size:.85rem; border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s;
+}
+.elem-del-btn:hover { background:rgba(240,98,146,.12); }
+.elem-vis-btn {
+  width:20px; height:20px; border:none; background:transparent;
+  color:var(--dim); cursor:pointer; font-size:.8rem; border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+}
+.elem-vis-btn.hidden-el { color:var(--border); }
+
+/* Canvas selection indicator */
+.canvas-wrap { position:relative; }
+.canvas-overlay-info {
+  position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,.6); color:rgba(255,255,255,.5);
+  font-size:.68rem; padding:.2rem .6rem; border-radius:20px;
+  pointer-events:none; white-space:nowrap;
+}
+
+/* Selected element handle */
+.selected-el-badge {
+  position:absolute; top:8px; right:8px;
+  background:rgba(124,92,252,.9); color:#fff;
+  font-size:.7rem; padding:.2rem .6rem; border-radius:20px;
+  pointer-events:none;
+}
+
+/* Arabic RTL adjustments */
+html[dir="rtl"] .ed-head { flex-direction:row-reverse; }
+html[dir="rtl"] .ed-logo { margin-right:0; margin-left:.5rem; }
+html[dir="rtl"] .fx-panel { border-left:none; border-right:1px solid var(--border); }
+html[dir="rtl"] .fx-lbl { flex-direction:row-reverse; }
+html[dir="rtl"] .tl-time { margin-left:0; margin-right:auto; }
+html[dir="rtl"] .tl-transport { flex-direction:row-reverse; }
+html[dir="rtl"] .mode-btns { flex-direction:row-reverse; }
+</style>
 </head>
 <body>
 
 <div id="uploadPage">
   <div class="logo">⚡ AudioViz Studio</div>
-  <p class="upload-sub">Upload an image and audio file to create an audio-reactive video you can export.</p>
+  <p class="upload-sub" data-i18n="upload_sub">Upload an image and audio file to create an audio-reactive video you can export.</p>
 
   <div class="upload-row">
     <div class="upload-card" id="imgCard" onclick="document.getElementById('imgInput').click()">
       <div class="upload-icon">🖼️</div>
-      <h3>Background Image</h3>
+      <h3 data-i18n="bg_image">Background Image</h3>
       <p>PNG · JPG · WebP · GIF</p>
-      <span class="upload-status" id="imgStatus">Click or drag to upload</span>
+      <span class="upload-status" id="imgStatus" data-i18n="click_upload">Click or drag to upload</span>
       <input type="file" id="imgInput" accept="image/*" hidden>
     </div>
     <div class="upload-card" id="audioCard" onclick="document.getElementById('audioInput').click()">
       <div class="upload-icon">🎧</div>
-      <h3>Audio Track</h3>
+      <h3 data-i18n="audio_track">Audio Track</h3>
       <p>MP3 · WAV · FLAC · OGG · AAC</p>
-      <span class="upload-status" id="audioStatus">Click or drag to upload</span>
+      <span class="upload-status" id="audioStatus" data-i18n="click_upload">Click or drag to upload</span>
       <input type="file" id="audioInput" accept="audio/*" hidden>
     </div>
   </div>
 
-  <button class="start-btn" id="startBtn" onclick="openEditor()">▶ Open Editor</button>
+  <button class="start-btn" id="startBtn" onclick="openEditor()" data-i18n="open_editor">▶ Open Editor</button>
 </div>
 
 <div id="editor">
   <header class="ed-head">
     <span class="ed-logo">⚡ AudioViz</span>
+
     <div class="mode-btns">
-      <button class="m-btn on" onclick="setMode(this,'bars')">Bars</button>
-      <button class="m-btn" onclick="setMode(this,'wave')">Wave</button>
-      <button class="m-btn" onclick="setMode(this,'circular')">Circular</button>
-      <button class="m-btn" onclick="setMode(this,'particles')">Particles</button>
-      <button class="m-btn" onclick="setMode(this,'ripple')">Ripple</button>
+      <button class="m-btn on" onclick="setMode(this,'bars')" data-i18n="mode_bars">Bars</button>
+      <button class="m-btn" onclick="setMode(this,'wave')" data-i18n="mode_wave">Wave</button>
+      <button class="m-btn" onclick="setMode(this,'circular')" data-i18n="mode_circular">Circular</button>
+      <button class="m-btn" onclick="setMode(this,'particles')" data-i18n="mode_particles">Particles</button>
+      <button class="m-btn" onclick="setMode(this,'ripple')" data-i18n="mode_ripple">Ripple</button>
     </div>
+
     <span class="head-spacer"></span>
+
+    <!-- Undo / Redo -->
+    <button class="hist-btn" id="undoBtn" onclick="undo()" title="Undo (Ctrl+Z)" disabled>↩</button>
+    <button class="hist-btn" id="redoBtn" onclick="redo()" title="Redo (Ctrl+Y)" disabled>↪</button>
+
+    <!-- Reset -->
+    <button class="reset-btn" onclick="resetAll()" data-i18n="reset">↺ Reset</button>
+
+    <!-- Language toggle -->
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">🌐 AR</button>
+
     <div class="level-meter" id="levelMeter">
       <div class="level-bar" style="height:6px;background:var(--green)"></div>
       <div class="level-bar" style="height:6px;background:var(--green)"></div>
@@ -53,20 +226,78 @@
       <div class="level-bar" style="height:6px;background:var(--green)"></div>
       <div class="level-bar" style="height:6px;background:var(--green)"></div>
     </div>
-    <button class="export-btn" id="exportBtn" onclick="startExport()">⬇ Export Video</button>
+
+    <button class="export-btn" id="exportBtn" onclick="startExport()" data-i18n="export_video">⬇ Export Video</button>
   </header>
 
   <div class="ed-main">
-    <div class="canvas-wrap">
+    <div class="canvas-wrap" id="canvasWrap">
       <canvas id="mainCanvas"></canvas>
+      <div class="canvas-overlay-info" id="canvasSizeInfo">1280 × 720</div>
+      <div class="selected-el-badge" id="selBadge" style="display:none"></div>
     </div>
 
+    <!-- Effects + new panels -->
     <div class="fx-panel">
 
+      <!-- ── CANVAS SIZE ── -->
       <div class="fx-sec">
-        <h5>🔊 Volume</h5>
+        <h5 data-i18n="panel_canvas">📐 Canvas Size</h5>
+        <div class="aspect-btns">
+          <button class="asp-btn on" onclick="setAspect(this,'16:9')" data-ratio="16:9">16:9</button>
+          <button class="asp-btn" onclick="setAspect(this,'9:16')" data-ratio="9:16">9:16</button>
+          <button class="asp-btn" onclick="setAspect(this,'1:1')" data-ratio="1:1">1:1</button>
+          <button class="asp-btn" onclick="setAspect(this,'4:3')" data-ratio="4:3">4:3</button>
+        </div>
+        <div class="custom-size-row">
+          <input type="number" id="customW" value="1280" min="64" max="3840" placeholder="W">
+          <span>×</span>
+          <input type="number" id="customH" value="720" min="64" max="3840" placeholder="H">
+          <button class="apply-size-btn" onclick="applyCustomSize()" data-i18n="apply">Apply</button>
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <!-- ── IMAGE EDITOR ── -->
+      <div class="fx-sec">
+        <h5 data-i18n="panel_image">🖼 Image Editor</h5>
+        <div class="img-filter-row">
+          <div class="fx-row">
+            <div class="fx-lbl"><span data-i18n="brightness">Brightness</span><span id="brightLbl">100%</span></div>
+            <input type="range" id="brightR" min="0" max="200" value="100"
+              oninput="imgFx.brightness(this)">
+          </div>
+          <div class="fx-row">
+            <div class="fx-lbl"><span data-i18n="contrast">Contrast</span><span id="contrastLbl">100%</span></div>
+            <input type="range" id="contrastR" min="0" max="200" value="100"
+              oninput="imgFx.contrast(this)">
+          </div>
+          <div class="fx-row">
+            <div class="fx-lbl"><span data-i18n="saturation">Saturation</span><span id="satLbl">100%</span></div>
+            <input type="range" id="satR" min="0" max="200" value="100"
+              oninput="imgFx.saturation(this)">
+          </div>
+          <div class="fx-row">
+            <div class="fx-lbl"><span data-i18n="blur_label">Blur</span><span id="blurLbl">0px</span></div>
+            <input type="range" id="blurR" min="0" max="20" value="0"
+              oninput="imgFx.blur(this)">
+          </div>
+          <div class="fx-row">
+            <div class="fx-lbl"><span data-i18n="sepia">Sepia</span><span id="sepiaLbl">0%</span></div>
+            <input type="range" id="sepiaR" min="0" max="100" value="0"
+              oninput="imgFx.sepia(this)">
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <!-- ── VOLUME ── -->
+      <div class="fx-sec">
+        <h5 data-i18n="panel_volume">🔊 Volume</h5>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Volume</span><span id="volLbl">100%</span></div>
+          <div class="fx-lbl"><span data-i18n="volume">Volume</span><span id="volLbl">100%</span></div>
           <input type="range" id="volR" min="0" max="200" value="100" oninput="fx.vol(this)">
         </div>
       </div>
@@ -74,17 +305,17 @@
       <div class="fx-div"></div>
 
       <div class="fx-sec">
-        <h5>🎛 Equalizer</h5>
+        <h5 data-i18n="panel_eq">🎛 Equalizer</h5>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Bass</span><span id="bassLbl">0 dB</span></div>
+          <div class="fx-lbl"><span data-i18n="bass">Bass</span><span id="bassLbl">0 dB</span></div>
           <input type="range" id="bassR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'bass')">
         </div>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Mid</span><span id="midLbl">0 dB</span></div>
+          <div class="fx-lbl"><span data-i18n="mid">Mid</span><span id="midLbl">0 dB</span></div>
           <input type="range" id="midR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'mid')">
         </div>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Treble</span><span id="trebLbl">0 dB</span></div>
+          <div class="fx-lbl"><span data-i18n="treble">Treble</span><span id="trebLbl">0 dB</span></div>
           <input type="range" id="trebR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'treb')">
         </div>
       </div>
@@ -92,9 +323,9 @@
       <div class="fx-div"></div>
 
       <div class="fx-sec">
-        <h5>🌊 Reverb</h5>
+        <h5 data-i18n="panel_reverb">🌊 Reverb</h5>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Wet</span><span id="rvbLbl">0%</span></div>
+          <div class="fx-lbl"><span data-i18n="wet">Wet</span><span id="rvbLbl">0%</span></div>
           <input type="range" id="rvbR" min="0" max="100" value="0" oninput="fx.reverb(this)">
         </div>
       </div>
@@ -102,17 +333,17 @@
       <div class="fx-div"></div>
 
       <div class="fx-sec">
-        <h5>🔁 Delay / Echo</h5>
+        <h5 data-i18n="panel_delay">🔁 Delay / Echo</h5>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Wet</span><span id="dlyWLbl">0%</span></div>
+          <div class="fx-lbl"><span data-i18n="wet">Wet</span><span id="dlyWLbl">0%</span></div>
           <input type="range" id="dlyWR" min="0" max="100" value="0" oninput="fx.dlyW(this)">
         </div>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Time</span><span id="dlyTLbl">350ms</span></div>
+          <div class="fx-lbl"><span data-i18n="time">Time</span><span id="dlyTLbl">350ms</span></div>
           <input type="range" id="dlyTR" min="50" max="1000" value="350" oninput="fx.dlyT(this)">
         </div>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Feedback</span><span id="fbLbl">30%</span></div>
+          <div class="fx-lbl"><span data-i18n="feedback">Feedback</span><span id="fbLbl">30%</span></div>
           <input type="range" id="fbR" min="0" max="85" value="30" oninput="fx.fb(this)">
         </div>
       </div>
@@ -120,17 +351,17 @@
       <div class="fx-div"></div>
 
       <div class="fx-sec">
-        <h5>🎨 Visual</h5>
+        <h5 data-i18n="panel_visual">🎨 Visual</h5>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Hue</span><span id="hueLbl">220°</span></div>
+          <div class="fx-lbl"><span data-i18n="hue">Hue</span><span id="hueLbl">220°</span></div>
           <input type="range" id="hueR" min="0" max="360" value="220" oninput="fx.hue(this)">
         </div>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Intensity</span><span id="intLbl">80%</span></div>
+          <div class="fx-lbl"><span data-i18n="intensity">Intensity</span><span id="intLbl">80%</span></div>
           <input type="range" id="intR" min="10" max="100" value="80" oninput="fx.int(this)">
         </div>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Overlay</span><span id="ovrLbl">45%</span></div>
+          <div class="fx-lbl"><span data-i18n="overlay">Overlay</span><span id="ovrLbl">45%</span></div>
           <input type="range" id="ovrR" min="0" max="80" value="45" oninput="fx.ovr(this)">
         </div>
       </div>
@@ -138,14 +369,30 @@
       <div class="fx-div"></div>
 
       <div class="fx-sec">
-        <h5>⚡ Compressor</h5>
+        <h5 data-i18n="panel_comp">⚡ Compressor</h5>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Threshold</span><span id="cmpLbl">-24 dB</span></div>
+          <div class="fx-lbl"><span data-i18n="threshold">Threshold</span><span id="cmpLbl">-24 dB</span></div>
           <input type="range" id="cmpR" min="-60" max="0" value="-24" oninput="fx.cmp(this)">
         </div>
         <div class="fx-row">
-          <div class="fx-lbl"><span>Ratio</span><span id="ratLbl">4:1</span></div>
+          <div class="fx-lbl"><span data-i18n="ratio">Ratio</span><span id="ratLbl">4:1</span></div>
           <input type="range" id="ratR" min="1" max="20" value="4" oninput="fx.rat(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <!-- ── ADD ELEMENTS ── -->
+      <div class="fx-sec">
+        <h5 data-i18n="panel_elements">✨ Add Elements</h5>
+        <div class="elem-add-row">
+          <button class="elem-type-btn" onclick="openElemModal('text')">🔤 <span data-i18n="elem_text">Text</span></button>
+          <button class="elem-type-btn" onclick="openElemModal('rect')">▭ <span data-i18n="elem_rect">Rect</span></button>
+          <button class="elem-type-btn" onclick="openElemModal('circle')">◯ <span data-i18n="elem_circle">Circle</span></button>
+          <button class="elem-type-btn" onclick="openElemModal('image')">🖼 <span data-i18n="elem_image">Image</span></button>
+        </div>
+        <div class="elem-list" id="elemList">
+          <!-- dynamically filled -->
         </div>
       </div>
 
@@ -158,7 +405,7 @@
       <button class="t-btn play" id="playBtn" onclick="togglePlay()" title="Play/Pause (Space)">▶</button>
       <button class="t-btn" onclick="stopAll()" title="Stop (S)">⏹</button>
       <button class="t-btn" onclick="seekEnd()" title="Go to end (End)">⏭</button>
-      <span style="font-size:.72rem;color:var(--dim);margin-left:.25rem">
+      <span style="font-size:.72rem;color:var(--dim);margin-left:.25rem" data-i18n="shortcuts">
         [Space] Play · [S] Stop · [←/→] Seek 5s
       </span>
       <span class="tl-time" id="tlTime">0:00.0 / 0:00.0</span>
@@ -167,13 +414,150 @@
   </div>
 </div>
 
+<!-- Export overlay — two-step: format picker → progress -->
 <div class="exp-overlay" id="expOverlay">
-  <div class="exp-card">
-    <div class="spinner"></div>
-    <h3>Exporting Video…</h3>
-    <p id="expStatus">Preparing…</p>
-    <div class="exp-bar-wrap"><div class="exp-bar" id="expBar"></div></div>
-    <button class="cancel-btn" onclick="cancelExport()">Cancel</button>
+  <div class="exp-card" style="min-width:340px">
+
+    <!-- Step 1: Format picker -->
+    <div id="expFormatStep">
+      <h3 style="margin-bottom:.3rem" data-i18n="exporting">Export</h3>
+      <p style="color:var(--dim);font-size:.8rem;margin-bottom:1.25rem">Choose your export format</p>
+
+      <div class="exp-fmt-grid">
+        <button class="exp-fmt-btn" onclick="beginExport('wav')">
+          <span class="exp-fmt-icon">🎵</span>
+          <span class="exp-fmt-name">WAV</span>
+          <span class="exp-fmt-desc">Audio only · Lossless</span>
+        </button>
+        <button class="exp-fmt-btn" onclick="beginExport('webm')">
+          <span class="exp-fmt-icon">🎬</span>
+          <span class="exp-fmt-name">WebM</span>
+          <span class="exp-fmt-desc">Video + Audio · VP9</span>
+        </button>
+        <button class="exp-fmt-btn" onclick="beginExport('mp4')">
+          <span class="exp-fmt-icon">🎞️</span>
+          <span class="exp-fmt-name">MP4</span>
+          <span class="exp-fmt-desc">Video + Audio · H.264</span>
+        </button>
+      </div>
+
+      <button class="cancel-btn" style="margin-top:1rem;width:100%" onclick="cancelExport()" data-i18n="cancel">Cancel</button>
+    </div>
+
+    <!-- Step 2: Progress -->
+    <div id="expProgressStep" style="display:none;text-align:center">
+      <div class="spinner"></div>
+      <h3 id="expTitle" style="margin-bottom:.35rem">Exporting…</h3>
+      <p id="expStatus" style="color:var(--dim);font-size:.82rem;margin-bottom:1.25rem">Preparing…</p>
+      <div class="exp-bar-wrap"><div class="exp-bar" id="expBar"></div></div>
+      <button class="cancel-btn" style="margin-top:1.25rem" onclick="cancelExport()" data-i18n="cancel">Cancel</button>
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* Export format grid */
+.exp-fmt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .6rem;
+  margin-bottom: .5rem;
+}
+.exp-fmt-btn {
+  display: flex; flex-direction: column; align-items: center; gap: .3rem;
+  padding: .85rem .5rem;
+  background: var(--s2); border: 1.5px solid var(--border); border-radius: 12px;
+  color: var(--text); cursor: pointer;
+  transition: border-color .15s, background .15s, transform .12s;
+}
+.exp-fmt-btn:hover {
+  border-color: var(--purple); background: rgba(124,92,252,.08);
+  transform: translateY(-2px);
+}
+.exp-fmt-icon  { font-size: 1.5rem; }
+.exp-fmt-name  { font-size: .85rem; font-weight: 700; }
+.exp-fmt-desc  { font-size: .62rem; color: var(--dim); text-align: center; line-height: 1.3; }
+</style>
+
+
+<!-- Element Modal -->
+<div class="elem-modal" id="elemModal">
+  <div class="elem-card">
+    <h4 id="elemModalTitle">Add Element</h4>
+
+    <!-- Text fields -->
+    <div id="textFields">
+      <div class="elem-field">
+        <label data-i18n="elem_text_content">Text Content</label>
+        <input type="text" id="elemText" placeholder="Hello World">
+      </div>
+      <div class="elem-field">
+        <label data-i18n="elem_font_size">Font Size</label>
+        <input type="number" id="elemFontSize" value="48" min="8" max="300">
+      </div>
+      <div class="elem-field">
+        <label data-i18n="elem_font">Font</label>
+        <select id="elemFont">
+          <option>Inter</option>
+          <option>Arial</option>
+          <option>Georgia</option>
+          <option>Courier New</option>
+          <option>Impact</option>
+          <option>Verdana</option>
+          <option>Times New Roman</option>
+        </select>
+      </div>
+      <div class="elem-field">
+        <label data-i18n="elem_bold">Bold</label>
+        <input type="checkbox" id="elemBold">
+      </div>
+    </div>
+
+    <!-- Shape fields (rect/circle) -->
+    <div id="shapeFields" style="display:none">
+      <div class="elem-field">
+        <label data-i18n="elem_width">Width (px)</label>
+        <input type="number" id="elemShapeW" value="200" min="10" max="3840">
+      </div>
+      <div class="elem-field">
+        <label data-i18n="elem_height">Height (px)</label>
+        <input type="number" id="elemShapeH" value="120" min="10" max="3840">
+      </div>
+      <div class="elem-field">
+        <label data-i18n="elem_filled">Filled</label>
+        <input type="checkbox" id="elemFilled" checked>
+      </div>
+    </div>
+
+    <!-- Image upload fields -->
+    <div id="imageFields" style="display:none">
+      <div class="elem-field">
+        <label data-i18n="elem_image_file">Image File</label>
+        <input type="file" id="elemImageFile" accept="image/*"
+          style="font-size:.75rem;color:var(--text)">
+      </div>
+      <div class="elem-field">
+        <label data-i18n="elem_img_width">Width (px)</label>
+        <input type="number" id="elemImgW" value="200" min="10">
+      </div>
+    </div>
+
+    <!-- Common fields -->
+    <div class="elem-field">
+      <label data-i18n="elem_color">Color</label>
+      <div class="elem-field-row">
+        <input type="color" id="elemColor" value="#ffffff">
+        <span style="font-size:.75rem;color:var(--dim)" data-i18n="elem_opacity">Opacity</span>
+        <input type="number" id="elemOpacity" value="100" min="0" max="100" style="width:55px">
+        <span style="font-size:.75rem;color:var(--dim)">%</span>
+      </div>
+    </div>
+
+    <div class="elem-actions">
+      <button class="elem-cancel-btn" onclick="closeElemModal()" data-i18n="cancel">Cancel</button>
+      <button class="elem-ok-btn" onclick="confirmAddElement()" data-i18n="add">Add</button>
+    </div>
   </div>
 </div>
 
