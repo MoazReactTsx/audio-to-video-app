@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AudioViz Studio</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07070f;
+  --s1:#0f0f1c;
+  --s2:#1a1a2e;
+  --s3:#252540;
+  --border:#2d2d4a;
+  --purple:#7c5cfc;
+  --magenta:#e040fb;
+  --cyan:#00e5ff;
+  --green:#39d98a;
+  --red:#f06292;
+  --text:#e8e8ff;
+  --dim:#6060a0;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow:hidden}
+
+/* ── UPLOAD PAGE ── */
+#uploadPage{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2rem;padding:2rem;z-index:50;background:var(--bg);
+  transition:opacity .4s,transform .4s;
+}
+#uploadPage.exit{opacity:0;transform:scale(0.97);pointer-events:none}
+
+.logo{
+  font-size:1.8rem;font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(135deg,var(--purple),var(--magenta),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.upload-sub{color:var(--dim);font-size:.9rem;text-align:center;max-width:400px;line-height:1.5}
+
+.upload-row{display:flex;gap:1.25rem;width:100%;max-width:600px}
+.upload-card{
+  flex:1;background:var(--s1);border:1.5px dashed var(--border);border-radius:20px;
+  padding:2.25rem 1.5rem;text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s,transform .15s;
+  display:flex;flex-direction:column;align-items:center;gap:.6rem;
+  user-select:none;
+}
+.upload-card:hover{border-color:var(--purple);background:rgba(124,92,252,.07);transform:translateY(-3px)}
+.upload-card.done{border-style:solid;border-color:var(--green);background:rgba(57,217,138,.05)}
+.upload-card.drag-over{border-color:var(--cyan);background:rgba(0,229,255,.07)}
+.upload-icon{font-size:2.5rem}
+.upload-card h3{font-size:.95rem;font-weight:600}
+.upload-card p{font-size:.75rem;color:var(--dim)}
+.upload-status{font-size:.78rem;color:var(--dim);transition:color .2s}
+.upload-card.done .upload-status{color:var(--green)}
+
+.start-btn{
+  padding:.85rem 2.5rem;background:linear-gradient(135deg,var(--purple),var(--magenta));
+  border:none;border-radius:50px;color:#fff;font-size:1rem;font-weight:700;
+  cursor:pointer;opacity:0;transform:translateY(8px);
+  transition:opacity .3s,transform .3s,box-shadow .2s;pointer-events:none;
+  box-shadow:0 0 0 rgba(124,92,252,0);
+}
+.start-btn.ready{opacity:1;transform:translateY(0);pointer-events:all}
+.start-btn:hover{box-shadow:0 8px 30px rgba(124,92,252,.5);transform:translateY(-2px)}
+
+/* ── EDITOR ── */
+#editor{
+  display:none;flex-direction:column;height:100vh;
+  position:fixed;inset:0;
+}
+#editor.active{display:flex}
+
+/* Header */
+.ed-head{
+  display:flex;align-items:center;padding:.6rem 1rem;gap:.75rem;
+  background:var(--s1);border-bottom:1px solid var(--border);
+  flex-shrink:0;z-index:10;
+}
+.ed-logo{font-size:1.1rem;font-weight:800;
+  background:linear-gradient(135deg,var(--purple),var(--magenta));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-right:.5rem;white-space:nowrap;
+}
+.mode-btns{display:flex;gap:.3rem;flex-wrap:nowrap}
+.m-btn{
+  padding:.35rem .7rem;border:1px solid var(--border);border-radius:8px;
+  background:transparent;color:var(--dim);cursor:pointer;font-size:.76rem;
+  font-weight:600;transition:all .15s;white-space:nowrap;
+}
+.m-btn:hover{border-color:var(--purple);color:var(--purple)}
+.m-btn.on{background:var(--purple);border-color:var(--purple);color:#fff}
+
+.head-spacer{flex:1}
+
+.level-meter{
+  display:flex;align-items:center;gap:3px;height:20px;
+}
+.level-bar{width:4px;border-radius:2px;background:var(--border);transition:height .05s}
+
+.export-btn{
+  display:flex;align-items:center;gap:.4rem;
+  padding:.45rem 1rem;background:var(--magenta);border:none;border-radius:8px;
+  color:#fff;font-weight:700;font-size:.8rem;cursor:pointer;
+  transition:opacity .2s,transform .15s;white-space:nowrap;
+}
+.export-btn:hover{opacity:.9;transform:translateY(-1px)}
+.export-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* Main */
+.ed-main{display:flex;flex:1;overflow:hidden}
+
+.canvas-wrap{
+  flex:1;background:#000;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+#mainCanvas{display:block;max-width:100%;max-height:100%}
+
+/* Effects panel */
+.fx-panel{
+  width:240px;flex-shrink:0;background:var(--s1);border-left:1px solid var(--border);
+  overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:1rem;
+}
+.fx-panel::-webkit-scrollbar{width:3px}
+.fx-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.fx-sec h5{
+  font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--dim);margin-bottom:.6rem;
+}
+.fx-row{margin-bottom:.55rem}
+.fx-lbl{
+  display:flex;justify-content:space-between;
+  font-size:.76rem;color:var(--text);margin-bottom:.25rem;
+}
+.fx-lbl span:last-child{color:var(--purple);font-weight:700;font-size:.72rem;font-family:monospace}
+
+input[type=range]{
+  width:100%;height:3px;-webkit-appearance:none;appearance:none;
+  background:var(--border);border-radius:2px;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:13px;height:13px;background:var(--purple);border-radius:50%;
+  box-shadow:0 0 8px rgba(124,92,252,.6);
+}
+input[type=range]:hover{background:var(--s3)}
+
+.fx-div{height:1px;background:var(--border);margin:.25rem 0}
+
+/* Timeline */
+.tl-wrap{
+  flex-shrink:0;background:var(--s1);border-top:1px solid var(--border);
+}
+.tl-transport{
+  display:flex;align-items:center;padding:.4rem .8rem;gap:.5rem;
+  border-bottom:1px solid var(--border);
+}
+.t-btn{
+  width:32px;height:32px;border:none;border-radius:50%;
+  background:var(--s2);color:var(--text);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.8rem;transition:background .15s;
+}
+.t-btn:hover{background:var(--s3)}
+.t-btn.play{width:40px;height:40px;background:var(--purple);font-size:.9rem}
+.t-btn.play:hover{background:#6a4de8}
+
+.tl-time{
+  font-family:'Courier New',monospace;font-size:.82rem;
+  color:var(--cyan);letter-spacing:.04em;margin-left:auto;
+}
+
+#tlCanvas{display:block;width:100%;height:72px;cursor:crosshair}
+
+/* Export overlay */
+.exp-overlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.85);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;
+}
+.exp-overlay.show{display:flex}
+.exp-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:20px;
+  padding:2rem 2.5rem;text-align:center;min-width:320px;
+}
+.exp-card h3{font-size:1.1rem;margin-bottom:.4rem}
+.exp-card p{color:var(--dim);font-size:.82rem;margin-bottom:1.25rem}
+.exp-bar-wrap{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.exp-bar{height:100%;background:linear-gradient(90deg,var(--purple),var(--magenta));width:0%;transition:width .2s;border-radius:3px}
+.cancel-btn{
+  margin-top:1.25rem;padding:.45rem 1.25rem;background:transparent;
+  border:1px solid var(--border);border-radius:8px;color:var(--dim);
+  cursor:pointer;font-size:.82rem;transition:color .15s,border-color .15s;
+}
+.cancel-btn:hover{color:var(--text);border-color:var(--text)}
+
+.spinner{
+  width:36px;height:36px;border:3px solid var(--border);
+  border-top-color:var(--purple);border-radius:50%;
+  animation:spin .7s linear infinite;margin:0 auto 1rem;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ── UPLOAD PAGE ── -->
+<div id="uploadPage">
+  <div class="logo">⚡ AudioViz Studio</div>
+  <p class="upload-sub">Upload an image and audio file to create an audio-reactive video you can export.</p>
+
+  <div class="upload-row">
+    <div class="upload-card" id="imgCard" onclick="document.getElementById('imgInput').click()">
+      <div class="upload-icon">🖼️</div>
+      <h3>Background Image</h3>
+      <p>PNG · JPG · WebP · GIF</p>
+      <span class="upload-status" id="imgStatus">Click or drag to upload</span>
+      <input type="file" id="imgInput" accept="image/*" hidden>
+    </div>
+    <div class="upload-card" id="audioCard" onclick="document.getElementById('audioInput').click()">
+      <div class="upload-icon">🎧</div>
+      <h3>Audio Track</h3>
+      <p>MP3 · WAV · FLAC · OGG · AAC</p>
+      <span class="upload-status" id="audioStatus">Click or drag to upload</span>
+      <input type="file" id="audioInput" accept="audio/*" hidden>
+    </div>
+  </div>
+
+  <button class="start-btn" id="startBtn" onclick="openEditor()">▶ Open Editor</button>
+</div>
+
+<!-- ── EDITOR ── -->
+<div id="editor">
+  <!-- Header -->
+  <header class="ed-head">
+    <span class="ed-logo">⚡ AudioViz</span>
+    <div class="mode-btns">
+      <button class="m-btn on" onclick="setMode(this,'bars')">Bars</button>
+      <button class="m-btn" onclick="setMode(this,'wave')">Wave</button>
+      <button class="m-btn" onclick="setMode(this,'circular')">Circular</button>
+      <button class="m-btn" onclick="setMode(this,'particles')">Particles</button>
+      <button class="m-btn" onclick="setMode(this,'ripple')">Ripple</button>
+    </div>
+    <span class="head-spacer"></span>
+    <div class="level-meter" id="levelMeter">
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+    </div>
+    <button class="export-btn" id="exportBtn" onclick="startExport()">⬇ Export Video</button>
+  </header>
+
+  <!-- Main -->
+  <div class="ed-main">
+    <div class="canvas-wrap">
+      <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <!-- Effects -->
+    <div class="fx-panel">
+
+      <div class="fx-sec">
+        <h5>🔊 Volume</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Volume</span><span id="volLbl">100%</span></div>
+          <input type="range" id="volR" min="0" max="200" value="100" oninput="fx.vol(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>🎛 Equalizer</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Bass</span><span id="bassLbl">0 dB</span></div>
+          <input type="range" id="bassR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'bass')">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Mid</span><span id="midLbl">0 dB</span></div>
+          <input type="range" id="midR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'mid')">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Treble</span><span id="trebLbl">0 dB</span></div>
+          <input type="range" id="trebR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'treb')">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>🌊 Reverb</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Wet</span><span id="rvbLbl">0%</span></div>
+          <input type="range" id="rvbR" min="0" max="100" value="0" oninput="fx.reverb(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>🔁 Delay / Echo</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Wet</span><span id="dlyWLbl">0%</span></div>
+          <input type="range" id="dlyWR" min="0" max="100" value="0" oninput="fx.dlyW(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Time</span><span id="dlyTLbl">350ms</span></div>
+          <input type="range" id="dlyTR" min="50" max="1000" value="350" oninput="fx.dlyT(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Feedback</span><span id="fbLbl">30%</span></div>
+          <input type="range" id="fbR" min="0" max="85" value="30" oninput="fx.fb(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>🎨 Visual</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Hue</span><span id="hueLbl">220°</span></div>
+          <input type="range" id="hueR" min="0" max="360" value="220" oninput="fx.hue(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Intensity</span><span id="intLbl">80%</span></div>
+          <input type="range" id="intR" min="10" max="100" value="80" oninput="fx.int(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Overlay</span><span id="ovrLbl">45%</span></div>
+          <input type="range" id="ovrR" min="0" max="80" value="45" oninput="fx.ovr(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>⚡ Compressor</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Threshold</span><span id="cmpLbl">-24 dB</span></div>
+          <input type="range" id="cmpR" min="-60" max="0" value="-24" oninput="fx.cmp(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Ratio</span><span id="ratLbl">4:1</span></div>
+          <input type="range" id="ratR" min="1" max="20" value="4" oninput="fx.rat(this)">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="tl-wrap">
+    <div class="tl-transport">
+      <button class="t-btn" onclick="seekStart()" title="Go to start (Home)">⏮</button>
+      <button class="t-btn play" id="playBtn" onclick="togglePlay()" title="Play/Pause (Space)">▶</button>
+      <button class="t-btn" onclick="stopAll()" title="Stop (S)">⏹</button>
+      <button class="t-btn" onclick="seekEnd()" title="Go to end (End)">⏭</button>
+      <span style="font-size:.72rem;color:var(--dim);margin-left:.25rem">
+        [Space] Play · [S] Stop · [←/→] Seek 5s
+      </span>
+      <span class="tl-time" id="tlTime">0:00.0 / 0:00.0</span>
+    </div>
+    <canvas id="tlCanvas"></canvas>
+  </div>
+</div>
+
+<!-- Export overlay -->
+<div class="exp-overlay" id="expOverlay">
+  <div class="exp-card">
+    <div class="spinner"></div>
+    <h3>Exporting Video…</h3>
+    <p id="expStatus">Preparing…</p>
+    <div class="exp-bar-wrap"><div class="exp-bar" id="expBar"></div></div>
+    <button class="cancel-btn" onclick="cancelExport()">Cancel</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+const S = {
+  imgEl: null,
+  audioBuf: null,
+  playing: false,
+  startedAt: 0,   // audioCtx time when play began
+  pausedAt: 0,    // buffer offset at pause
+  trimA: 0,
+  trimB: 0,
+  mode: 'bars',
+  hue: 220,
+  intensity: 0.8,
+  overlay: 0.45,
+  particles: [],
+  ripples: [],
+  lastBeat: 0,
+  recording: false,
+  recCanceled: false,
+};
+
+/* ═══════════════════════════════════════════
+   AUDIO NODES
+═══════════════════════════════════════════ */
+let actx, analyser, freqData, timeData, src;
+let volGain, bassF, midF, trebF;
+let convolver, rvbSend, rvbDry;
+let dlyNode, fbGain, dlySend;
+let masterGain, compNode, mediaDest;
+
+/* ═══════════════════════════════════════════
+   CANVAS
+═══════════════════════════════════════════ */
+let cvs, c, tlCvs, tl;
+let waveform = null; // downsampled amplitudes for timeline
+
+/* ═══════════════════════════════════════════
+   UPLOAD
+═══════════════════════════════════════════ */
+document.getElementById('imgInput').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      S.imgEl = img;
+      document.getElementById('imgCard').classList.add('done');
+      document.getElementById('imgStatus').textContent = '✓ ' + f.name;
+      checkReady();
+    };
+    img.src = ev.target.result;
+  };
+  r.readAsDataURL(f);
+});
+
+document.getElementById('audioInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  document.getElementById('audioStatus').textContent = '⏳ Decoding…';
+
+  if (!actx) {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    buildAudioGraph();
+  }
+
+  try {
+    const ab = await f.arrayBuffer();
+    const buf = await actx.decodeAudioData(ab);
+    S.audioBuf = buf;
+    S.trimA = 0;
+    S.trimB = buf.duration;
+    S.pausedAt = 0;
+    extractWaveform(buf);
+    document.getElementById('audioCard').classList.add('done');
+    document.getElementById('audioStatus').textContent = '✓ ' + f.name;
+    checkReady();
+  } catch(err) {
+    document.getElementById('audioStatus').textContent = '❌ ' + err.message;
+  }
+});
+
+// Drag-and-drop
+['imgCard','audioCard'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', e => {
+    e.preventDefault(); el.classList.remove('drag-over');
+    const inp = document.getElementById(id === 'imgCard' ? 'imgInput' : 'audioInput');
+    const dt = new DataTransfer(); dt.items.add(e.dataTransfer.files[0]);
+    inp.files = dt.files; inp.dispatchEvent(new Event('change'));
+  });
+});
+
+function checkReady() {
+  if (S.imgEl && S.audioBuf)
+    document.getElementById('startBtn').classList.add('ready');
+}
+
+/* ═══════════════════════════════════════════
+   OPEN EDITOR
+═══════════════════════════════════════════ */
+function openEditor() {
+  document.getElementById('uploadPage').classList.add('exit');
+  setTimeout(() => {
+    document.getElementById('uploadPage').style.display = 'none';
+    const ed = document.getElementById('editor');
+    ed.classList.add('active');
+
+    cvs = document.getElementById('mainCanvas');
+    c   = cvs.getContext('2d');
+    tlCvs = document.getElementById('tlCanvas');
+    tl    = tlCvs.getContext('2d');
+
+    sizeCanvas();
+    window.addEventListener('resize', sizeCanvas);
+    setupTimelineEvents();
+    setupKeyboard();
+    requestAnimationFrame(loop);
+  }, 400);
+}
+
+/* ═══════════════════════════════════════════
+   AUDIO GRAPH
+═══════════════════════════════════════════ */
+function buildAudioGraph() {
+  analyser = actx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.82;
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+  timeData = new Uint8Array(analyser.frequencyBinCount * 2);
+
+  volGain = actx.createGain(); volGain.gain.value = 1;
+
+  bassF = actx.createBiquadFilter(); bassF.type = 'lowshelf'; bassF.frequency.value = 150;
+  midF  = actx.createBiquadFilter(); midF.type  = 'peaking';  midF.frequency.value  = 800; midF.Q.value = 1;
+  trebF = actx.createBiquadFilter(); trebF.type = 'highshelf'; trebF.frequency.value = 4000;
+
+  convolver = actx.createConvolver();
+  convolver.buffer = buildReverb();
+  rvbSend = actx.createGain(); rvbSend.gain.value = 0;
+  rvbDry  = actx.createGain(); rvbDry.gain.value  = 1;
+
+  dlyNode = actx.createDelay(3); dlyNode.delayTime.value = 0.35;
+  fbGain  = actx.createGain(); fbGain.gain.value  = 0.3;
+  dlySend = actx.createGain(); dlySend.gain.value = 0;
+
+  masterGain = actx.createGain();
+  compNode   = actx.createDynamicsCompressor();
+  compNode.threshold.value = -24; compNode.knee.value = 30;
+  compNode.ratio.value = 4; compNode.attack.value = 0.003; compNode.release.value = 0.25;
+
+  // Static chain: analyser → vol → EQ
+  analyser.connect(volGain);
+  volGain.connect(bassF); bassF.connect(midF); midF.connect(trebF);
+
+  // Dry
+  trebF.connect(rvbDry); rvbDry.connect(masterGain);
+  // Reverb
+  trebF.connect(rvbSend); rvbSend.connect(convolver); convolver.connect(masterGain);
+  // Delay
+  trebF.connect(dlySend); dlySend.connect(dlyNode);
+  dlyNode.connect(fbGain); fbGain.connect(dlyNode); // feedback loop
+  dlyNode.connect(masterGain);
+
+  masterGain.connect(compNode);
+  compNode.connect(actx.destination);
+
+  mediaDest = actx.createMediaStreamDestination();
+  compNode.connect(mediaDest);
+}
+
+function buildReverb() {
+  const sr = actx.sampleRate, len = Math.floor(sr * 2.5);
+  const buf = actx.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len, 2);
+  }
+  return buf;
+}
+
+/* ═══════════════════════════════════════════
+   TRANSPORT
+═══════════════════════════════════════════ */
+function play() {
+  if (S.playing || !S.audioBuf) return;
+  if (actx.state === 'suspended') actx.resume();
+
+  src = actx.createBufferSource();
+  src.buffer = S.audioBuf;
+  src.connect(analyser);
+
+  const offset = clamp(S.pausedAt, S.trimA, S.trimB);
+  src.start(0, offset, S.trimB - offset);
+  S.startedAt = actx.currentTime - offset;
+  S.playing = true;
+  document.getElementById('playBtn').textContent = '⏸';
+
+  src.onended = () => {
+    if (S.playing) {
+      S.playing = false;
+      S.pausedAt = S.trimA;
+      document.getElementById('playBtn').textContent = '▶';
+    }
+    if (S.recording && !S.recCanceled) {
+      setTimeout(() => finalizeExport(), 300);
+    }
+  };
+}
+
+function pause() {
+  if (!S.playing) return;
+  S.pausedAt = getNow();
+  try { src.stop(); } catch(e) {}
+  src = null; S.playing = false;
+  document.getElementById('playBtn').textContent = '▶';
+}
+
+function stopAll() {
+  if (S.playing) { try { src.stop(); } catch(e) {} src = null; S.playing = false; }
+  S.pausedAt = S.trimA;
+  document.getElementById('playBtn').textContent = '▶';
+}
+
+function togglePlay() { S.playing ? pause() : play(); }
+function seekStart() { const wp = S.playing; if(wp) pause(); S.pausedAt = S.trimA; if(wp) play(); }
+function seekEnd()   { const wp = S.playing; if(wp) pause(); S.pausedAt = S.trimB - 0.05; if(wp) play(); }
+
+function seekTo(t) {
+  const wp = S.playing;
+  if (wp) { try { src.stop(); } catch(e) {} src = null; S.playing = false; }
+  S.pausedAt = clamp(t, S.trimA, S.trimB);
+  if (wp) play();
+}
+
+function getNow() {
+  return S.playing ? actx.currentTime - S.startedAt : S.pausedAt;
+}
+
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+/* ═══════════════════════════════════════════
+   WAVEFORM EXTRACTION
+═══════════════════════════════════════════ */
+function extractWaveform(buf) {
+  const ch = buf.getChannelData(0);
+  const N = 1200, bs = Math.floor(ch.length / N);
+  waveform = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    let mx = 0;
+    for (let j = 0; j < bs; j++) mx = Math.max(mx, Math.abs(ch[i*bs+j]));
+    waveform[i] = mx;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   CANVAS RESIZE
+═══════════════════════════════════════════ */
+function sizeCanvas() {
+  const wrap = cvs.parentElement;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  let cw = W, ch = Math.floor(W * 9 / 16);
+  if (ch > H) { ch = H; cw = Math.floor(H * 16 / 9); }
+  cvs.width = cw; cvs.height = ch;
+}
+
+/* ═══════════════════════════════════════════
+   RENDER LOOP
+═══════════════════════════════════════════ */
+function loop() {
+  renderMain();
+  renderTimeline();
+  updateTimeLbl();
+  updateLevelMeter();
+  requestAnimationFrame(loop);
+}
+
+function renderMain() {
+  const W = cvs.width, H = cvs.height;
+  c.clearRect(0, 0, W, H);
+
+  // Get audio data
+  if (analyser) {
+    analyser.getByteFrequencyData(freqData);
+    analyser.getByteTimeDomainData(timeData);
+  }
+
+  const energy = getEnergy();
+  const beat   = detectBeat(energy);
+
+  // Draw image (with subtle pulse zoom)
+  if (S.imgEl) {
+    const scale = 1 + energy * 0.04 * S.intensity;
+    c.save();
+    c.translate(W/2, H/2);
+    c.scale(scale, scale);
+    c.drawImage(S.imgEl, -W/2, -H/2, W, H);
+    c.restore();
+  } else {
+    c.fillStyle = '#06060e';
+    c.fillRect(0, 0, W, H);
+  }
+
+  // Dark overlay
+  c.fillStyle = `rgba(0,0,0,${S.overlay})`;
+  c.fillRect(0, 0, W, H);
+
+  // Color tint based on energy
+  c.fillStyle = `hsla(${S.hue},80%,50%,${energy * 0.18 * S.intensity})`;
+  c.fillRect(0, 0, W, H);
+
+  // Visualizer
+  switch(S.mode) {
+    case 'bars':     drawBars(W, H);          break;
+    case 'wave':     drawWave(W, H);          break;
+    case 'circular': drawCircular(W, H);      break;
+    case 'particles':drawParticles(W,H,energy,beat); break;
+    case 'ripple':   drawRipple(W,H,energy,beat);    break;
+  }
+}
+
+/* ── ENERGY & BEAT ── */
+function getEnergy() {
+  if (!freqData) return 0;
+  let s = 0;
+  for (let i = 0; i < 16; i++) s += freqData[i];
+  return s / (16 * 255);
+}
+
+function detectBeat(e) {
+  const now = Date.now();
+  if (e > 0.55 && now - S.lastBeat > 220) { S.lastBeat = now; return true; }
+  return false;
+}
+
+/* ── BARS ── */
+function drawBars(W, H) {
+  const bins = Math.floor(freqData.length * 0.65);
+  const bw = W / bins;
+  for (let i = 0; i < bins; i++) {
+    const v   = freqData[i] / 255;
+    const bh  = v * H * 0.72 * S.intensity;
+    const hue = (S.hue + i * 0.6) % 360;
+    const gr  = c.createLinearGradient(0, H, 0, H - bh);
+    gr.addColorStop(0, `hsla(${hue},90%,50%,.9)`);
+    gr.addColorStop(1, `hsla(${(hue+50)%360},90%,80%,.7)`);
+    c.fillStyle = gr;
+    c.shadowBlur = 10; c.shadowColor = `hsla(${hue},90%,60%,.8)`;
+    c.fillRect(i * bw, H - bh, bw - 1, bh);
+  }
+  c.shadowBlur = 0;
+}
+
+/* ── WAVE ── */
+function drawWave(W, H) {
+  if (!timeData) return;
+  const len = timeData.length;
+  const sw  = W / len;
+
+  for (let pass = 0; pass < 2; pass++) {
+    c.beginPath();
+    for (let i = 0; i < len; i++) {
+      const v = timeData[i] / 128;
+      const y = pass === 0 ? v * H / 2 : H - v * H / 2;
+      i === 0 ? c.moveTo(0, y) : c.lineTo(i * sw, y);
+    }
+    c.strokeStyle = pass === 0
+      ? `hsla(${S.hue},90%,65%,.9)`
+      : `hsla(${(S.hue+60)%360},90%,65%,.55)`;
+    c.lineWidth = (3 - pass) * S.intensity;
+    c.shadowBlur = 18; c.shadowColor = `hsla(${S.hue},90%,60%,.5)`;
+    c.stroke();
+  }
+  c.shadowBlur = 0;
+}
+
+/* ── CIRCULAR ── */
+function drawCircular(W, H) {
+  const cx = W/2, cy = H/2;
+  const baseR = Math.min(W,H) * 0.27;
+  const bins  = Math.floor(freqData.length * 0.5);
+
+  c.save(); c.translate(cx, cy);
+
+  // Mirror both halves
+  for (let half = 0; half < 2; half++) {
+    for (let i = 0; i < bins; i++) {
+      const angle = (i / bins) * Math.PI - Math.PI/2 + (half ? Math.PI : 0);
+      const v    = freqData[i] / 255;
+      const len  = v * Math.min(W,H) * 0.28 * S.intensity;
+      const hue  = (S.hue + i * (360/bins)) % 360;
+
+      c.beginPath();
+      c.moveTo(Math.cos(angle)*baseR, Math.sin(angle)*baseR);
+      c.lineTo(Math.cos(angle)*(baseR+len), Math.sin(angle)*(baseR+len));
+      c.strokeStyle = `hsla(${hue},90%,65%,.9)`;
+      c.lineWidth = 2;
+      c.shadowBlur = 8; c.shadowColor = `hsla(${hue},90%,65%,.7)`;
+      c.stroke();
+    }
+  }
+
+  // Center ring
+  c.beginPath(); c.arc(0,0,baseR,0,Math.PI*2);
+  c.strokeStyle = `hsla(${S.hue},70%,60%,.25)`;
+  c.lineWidth = 1; c.shadowBlur = 0; c.stroke();
+
+  c.restore();
+}
+
+/* ── PARTICLES ── */
+function drawParticles(W, H, energy, beat) {
+  if (beat || energy > 0.25) {
+    const n = Math.floor(energy * 18 * S.intensity);
+    for (let i = 0; i < n; i++) {
+      S.particles.push({
+        x: W*.1 + Math.random()*W*.8,
+        y: H - 5,
+        vx: (Math.random()-.5) * 4 * energy * S.intensity,
+        vy: -(Math.random()*5+2) * energy * S.intensity,
+        life: 1,
+        decay: .008 + Math.random()*.018,
+        r: 2 + Math.random()*5 * energy * S.intensity,
+        hue: (S.hue + Math.random()*70-35 + 360) % 360,
+      });
+    }
+  }
+
+  S.particles = S.particles.filter(p => p.life > 0);
+  for (const p of S.particles) {
+    p.x += p.vx; p.y += p.vy; p.vy -= 0.06; p.life -= p.decay;
+    c.globalAlpha = p.life * .85;
+    c.shadowBlur = 12; c.shadowColor = `hsla(${p.hue},90%,70%,.9)`;
+    c.fillStyle = `hsla(${p.hue},90%,72%,1)`;
+    c.beginPath(); c.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2); c.fill();
+  }
+  c.globalAlpha = 1; c.shadowBlur = 0;
+
+  // Bar floor
+  const bins = Math.floor(freqData.length * 0.5);
+  const bw   = W / bins;
+  for (let i = 0; i < bins; i++) {
+    const v = freqData[i]/255;
+    c.fillStyle = `hsla(${(S.hue+i)%360},80%,60%,.35)`;
+    c.fillRect(i*bw, H - v*H*0.12*S.intensity, bw-1, v*H*0.12*S.intensity);
+  }
+}
+
+/* ── RIPPLE ── */
+function drawRipple(W, H, energy, beat) {
+  const cx = W/2, cy = H/2;
+  const maxR = Math.sqrt(W*W+H*H)*0.55;
+
+  if (beat) {
+    S.ripples.push({ r:10, max:maxR, life:1, hue:(S.hue+Math.random()*60)%360 });
+  }
+  if (energy > 0.15) {
+    S.ripples.push({ r:energy*40*S.intensity, max:maxR*energy*S.intensity*.8, life:.4, hue:S.hue });
+  }
+
+  S.ripples = S.ripples.filter(r => r.life > 0 && r.r < r.max);
+  for (const r of S.ripples) {
+    r.r += 4 + energy * 6; r.life -= 0.018;
+    c.beginPath(); c.arc(cx, cy, r.r, 0, Math.PI*2);
+    c.strokeStyle = `hsla(${r.hue},90%,70%,${r.life*.65})`;
+    c.lineWidth = 2*r.life*S.intensity;
+    c.shadowBlur = 16; c.shadowColor = `hsla(${r.hue},90%,70%,${r.life*.4})`;
+    c.stroke();
+  }
+
+  // Pulse circle
+  const pr = 35 + energy * Math.min(W,H) * 0.35 * S.intensity;
+  c.beginPath(); c.arc(cx, cy, pr, 0, Math.PI*2);
+  c.strokeStyle = `hsla(${S.hue},90%,65%,${energy*.6})`;
+  c.lineWidth = 3; c.shadowBlur = 24;
+  c.shadowColor = `hsla(${S.hue},90%,65%,.5)`; c.stroke();
+  c.shadowBlur = 0;
+}
+
+/* ═══════════════════════════════════════════
+   TIMELINE
+═══════════════════════════════════════════ */
+function renderTimeline() {
+  if (!waveform || !S.audioBuf) return;
+
+  const W = tlCvs.clientWidth || 800;
+  tlCvs.width = W; tlCvs.height = 72;
+  const H = 72, mid = H/2;
+
+  tl.fillStyle = '#0a0a14'; tl.fillRect(0, 0, W, H);
+
+  const dur = S.audioBuf.duration;
+  const ax = t => (t / dur) * W;
+
+  // Dim outside trim
+  tl.fillStyle = 'rgba(0,0,0,.55)';
+  tl.fillRect(0, 0, ax(S.trimA), H);
+  tl.fillRect(ax(S.trimB), 0, W - ax(S.trimB), H);
+
+  // Waveform
+  const N = waveform.length;
+  for (let i = 0; i < N; i++) {
+    const x = (i/N) * W;
+    const amp = waveform[i] * mid * 0.88;
+    const inTrim = x >= ax(S.trimA) && x <= ax(S.trimB);
+    tl.fillStyle = inTrim
+      ? `hsla(${S.hue},65%,55%,.85)`
+      : `hsla(${S.hue},40%,35%,.4)`;
+    tl.fillRect(x, mid - amp, 1, amp * 2);
+  }
+
+  // Trim handle A (green)
+  const ax_a = ax(S.trimA);
+  tl.fillStyle = '#39d98a';
+  tl.fillRect(ax_a, 0, 5, H);
+  tl.fillStyle = 'rgba(0,0,0,.7)';
+  tl.fillRect(ax_a, H/2-10, 5, 20);
+  tl.fillStyle = '#39d98a';
+  tl.font = '10px monospace'; tl.fillText('◀', ax_a, H/2+4);
+
+  // Trim handle B (red)
+  const ax_b = ax(S.trimB);
+  tl.fillStyle = '#f06292';
+  tl.fillRect(ax_b-5, 0, 5, H);
+  tl.fillStyle = '#f06292';
+  tl.fillText('▶', ax_b-5, H/2+4);
+
+  // Playhead
+  const px = ax(getNow());
+  tl.fillStyle = '#fff';
+  tl.fillRect(px-1, 0, 2, H);
+  tl.beginPath(); tl.moveTo(px-6,0); tl.lineTo(px+6,0); tl.lineTo(px,10);
+  tl.closePath(); tl.fill();
+
+  // Time labels
+  tl.fillStyle = 'rgba(255,255,255,.25)';
+  tl.font = '9px monospace';
+  for (let i = 0; i <= 10; i++) {
+    const x = (i/10)*W;
+    const t = (i/10)*dur;
+    tl.fillRect(x, H-12, 1, 12);
+    tl.fillText(fmt(t), x+2, H-2);
+  }
+}
+
+function setupTimelineEvents() {
+  let drag = null;
+
+  function xToTime(x) {
+    const W = tlCvs.clientWidth;
+    return (x / W) * (S.audioBuf ? S.audioBuf.duration : 1);
+  }
+
+  function handleAt(x) {
+    if (!S.audioBuf) return null;
+    const W = tlCvs.clientWidth;
+    const dur = S.audioBuf.duration;
+    const ax_a = (S.trimA / dur) * W;
+    const ax_b = (S.trimB / dur) * W;
+    if (Math.abs(x - ax_a) < 12) return 'a';
+    if (Math.abs(x - ax_b) < 12) return 'b';
+    return 'play';
+  }
+
+  tlCvs.addEventListener('mousedown', e => {
+    const r = tlCvs.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    drag = handleAt(x);
+    if (drag === 'play') seekTo(xToTime(x));
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!drag || !S.audioBuf) return;
+    const r = tlCvs.getBoundingClientRect();
+    const x = clamp(e.clientX - r.left, 0, tlCvs.clientWidth);
+    const t = xToTime(x);
+    if (drag === 'a') {
+      S.trimA = clamp(t, 0, S.trimB - 0.1);
+      if (S.pausedAt < S.trimA) S.pausedAt = S.trimA;
+    } else if (drag === 'b') {
+      S.trimB = clamp(t, S.trimA + 0.1, S.audioBuf.duration);
+      if (S.pausedAt > S.trimB) S.pausedAt = S.trimB;
+    } else {
+      seekTo(t);
+    }
+  });
+
+  document.addEventListener('mouseup', () => { drag = null; });
+
+  // Touch
+  tlCvs.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const r = tlCvs.getBoundingClientRect();
+    const x = e.touches[0].clientX - r.left;
+    drag = handleAt(x);
+    if (drag === 'play') seekTo(xToTime(x));
+  }, { passive:false });
+
+  document.addEventListener('touchmove', e => {
+    if (!drag) return;
+    const r = tlCvs.getBoundingClientRect();
+    const x = clamp(e.touches[0].clientX - r.left, 0, tlCvs.clientWidth);
+    const t = xToTime(x);
+    if (drag === 'a') S.trimA = clamp(t, 0, S.trimB-.1);
+    else if (drag === 'b') S.trimB = clamp(t, S.trimA+.1, S.audioBuf.duration);
+    else seekTo(t);
+  });
+
+  document.addEventListener('touchend', () => { drag = null; });
+}
+
+/* ═══════════════════════════════════════════
+   UI UPDATES
+═══════════════════════════════════════════ */
+function fmt(t) {
+  const m = Math.floor(t/60), s = Math.floor(t%60), ms = Math.floor((t%1)*10);
+  return `${m}:${s.toString().padStart(2,'0')}.${ms}`;
+}
+
+function updateTimeLbl() {
+  if (!S.audioBuf) return;
+  document.getElementById('tlTime').textContent =
+    `${fmt(getNow())} / ${fmt(S.audioBuf.duration)}`;
+}
+
+function updateLevelMeter() {
+  const bars = document.querySelectorAll('.level-bar');
+  const e = getEnergy();
+  bars.forEach((b, i) => {
+    const thresh = (i+1) / bars.length;
+    const active = e >= thresh;
+    const h = active ? Math.max(4, e * 20) : 4;
+    b.style.height = h + 'px';
+    b.style.background = thresh < 0.6 ? 'var(--green)' : thresh < 0.85 ? '#f59e0b' : 'var(--red)';
+    b.style.opacity = active ? '1' : '0.25';
+  });
+}
+
+/* ═══════════════════════════════════════════
+   VIZ MODE
+═══════════════════════════════════════════ */
+function setMode(btn, m) {
+  S.mode = m; S.particles = []; S.ripples = [];
+  document.querySelectorAll('.m-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+/* ═══════════════════════════════════════════
+   EFFECTS
+═══════════════════════════════════════════ */
+const fx = {
+  vol(el)  { if(volGain) volGain.gain.value = el.value/100; document.getElementById('volLbl').textContent = el.value+'%'; },
+  eq(el,t) {
+    const v = parseFloat(el.value);
+    if(t==='bass'&&bassF) { bassF.gain.value=v; document.getElementById('bassLbl').textContent=v+' dB'; }
+    if(t==='mid' &&midF)  { midF.gain.value=v;  document.getElementById('midLbl').textContent=v+' dB'; }
+    if(t==='treb'&&trebF) { trebF.gain.value=v;  document.getElementById('trebLbl').textContent=v+' dB'; }
+  },
+  reverb(el) {
+    const v = el.value/100;
+    if(rvbSend) rvbSend.gain.value = v;
+    if(rvbDry)  rvbDry.gain.value  = 1 - v*.6;
+    document.getElementById('rvbLbl').textContent = el.value+'%';
+  },
+  dlyW(el) { if(dlySend) dlySend.gain.value = el.value/100; document.getElementById('dlyWLbl').textContent = el.value+'%'; },
+  dlyT(el) { if(dlyNode) dlyNode.delayTime.value = el.value/1000; document.getElementById('dlyTLbl').textContent = el.value+'ms'; },
+  fb(el)   { if(fbGain)  fbGain.gain.value  = el.value/100; document.getElementById('fbLbl').textContent = el.value+'%'; },
+  hue(el)  { S.hue = parseInt(el.value); document.getElementById('hueLbl').textContent = el.value+'°'; },
+  int(el)  { S.intensity = el.value/100; document.getElementById('intLbl').textContent = el.value+'%'; },
+  ovr(el)  { S.overlay = el.value/100;   document.getElementById('ovrLbl').textContent = el.value+'%'; },
+  cmp(el)  { if(compNode) compNode.threshold.value = parseFloat(el.value); document.getElementById('cmpLbl').textContent = el.value+' dB'; },
+  rat(el)  { if(compNode) compNode.ratio.value = parseInt(el.value); document.getElementById('ratLbl').textContent = el.value+':1'; },
+};
+
+/* ═══════════════════════════════════════════
+   KEYBOARD
+═══════════════════════════════════════════ */
+function setupKeyboard() {
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    switch(e.code) {
+      case 'Space':     e.preventDefault(); togglePlay(); break;
+      case 'KeyS':      stopAll(); break;
+      case 'ArrowLeft': e.preventDefault(); seekTo(getNow()-5); break;
+      case 'ArrowRight':e.preventDefault(); seekTo(getNow()+5); break;
+      case 'Home':      seekStart(); break;
+      case 'End':       seekEnd(); break;
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════
+   EXPORT
+═══════════════════════════════════════════ */
+let recorder, chunks, expTimer, expStart;
+
+async function startExport() {
+  if (!S.audioBuf || !S.imgEl || S.recording) return;
+  S.recording = true; S.recCanceled = false;
+
+  document.getElementById('expOverlay').classList.add('show');
+  document.getElementById('expStatus').textContent = 'Preparing…';
+  document.getElementById('expBar').style.width = '0%';
+  document.getElementById('exportBtn').disabled = true;
+
+  if (S.playing) { try { src.stop(); } catch(e) {} src = null; S.playing = false; }
+  S.pausedAt = S.trimA;
+
+  const dur = S.trimB - S.trimA;
+  const canStream = cvs.captureStream(30);
+  const audStream = mediaDest.stream;
+
+  const combined = new MediaStream([
+    ...canStream.getVideoTracks(),
+    ...audStream.getAudioTracks()
+  ]);
+
+  const mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4']
+    .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+
+  chunks = [];
+  recorder = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 6000000 });
+  recorder.ondataavailable = e => { if (e.data.size>0) chunks.push(e.data); };
+  recorder.onstop = () => {
+    if (!S.recCanceled) {
+      const blob = new Blob(chunks, { type: mime });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `audioviz_${Date.now()}.${mime.includes('mp4')?'mp4':'webm'}`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    resetExport();
+  };
+
+  recorder.start(80);
+  play(); // starts from pausedAt = trimA
+
+  expStart = Date.now();
+  document.getElementById('expStatus').textContent = `Recording ${fmt(dur)}…`;
+
+  function tick() {
+    if (S.recCanceled) return;
+    const elapsed = (Date.now() - expStart) / 1000;
+    const pct = Math.min(100, (elapsed/dur)*100);
+    document.getElementById('expBar').style.width = pct + '%';
+    document.getElementById('expStatus').textContent =
+      `Recording: ${fmt(elapsed)} / ${fmt(dur)}`;
+    if (elapsed < dur + 0.5) expTimer = setTimeout(tick, 100);
+  }
+  tick();
+
+  expTimer = setTimeout(finalizeExport, (dur + 0.5) * 1000);
+}
+
+function finalizeExport() {
+  clearTimeout(expTimer);
+  if (recorder && recorder.state !== 'inactive') {
+    document.getElementById('expStatus').textContent = 'Finalizing…';
+    document.getElementById('expBar').style.width = '100%';
+    if (S.playing) pause();
+    recorder.stop();
+  }
+}
+
+function cancelExport() {
+  S.recCanceled = true;
+  clearTimeout(expTimer);
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+  if (S.playing) pause();
+  resetExport();
+}
+
+function resetExport() {
+  S.recording = false;
+  document.getElementById('expOverlay').classList.remove('show');
+  document.getElementById('exportBtn').disabled = false;
+}
+</script>
+</body>
+</html>

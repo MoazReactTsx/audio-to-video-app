@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AudioViz Studio</title>
+<link rel="stylesheet" href="global.css">
+</head>
+<body>
+
+<div id="uploadPage">
+  <div class="logo">⚡ AudioViz Studio</div>
+  <p class="upload-sub">Upload an image and audio file to create an audio-reactive video you can export.</p>
+
+  <div class="upload-row">
+    <div class="upload-card" id="imgCard" onclick="document.getElementById('imgInput').click()">
+      <div class="upload-icon">🖼️</div>
+      <h3>Background Image</h3>
+      <p>PNG · JPG · WebP · GIF</p>
+      <span class="upload-status" id="imgStatus">Click or drag to upload</span>
+      <input type="file" id="imgInput" accept="image/*" hidden>
+    </div>
+    <div class="upload-card" id="audioCard" onclick="document.getElementById('audioInput').click()">
+      <div class="upload-icon">🎧</div>
+      <h3>Audio Track</h3>
+      <p>MP3 · WAV · FLAC · OGG · AAC</p>
+      <span class="upload-status" id="audioStatus">Click or drag to upload</span>
+      <input type="file" id="audioInput" accept="audio/*" hidden>
+    </div>
+  </div>
+
+  <button class="start-btn" id="startBtn" onclick="openEditor()">▶ Open Editor</button>
+</div>
+
+<div id="editor">
+  <header class="ed-head">
+    <span class="ed-logo">⚡ AudioViz</span>
+    <div class="mode-btns">
+      <button class="m-btn on" onclick="setMode(this,'bars')">Bars</button>
+      <button class="m-btn" onclick="setMode(this,'wave')">Wave</button>
+      <button class="m-btn" onclick="setMode(this,'circular')">Circular</button>
+      <button class="m-btn" onclick="setMode(this,'particles')">Particles</button>
+      <button class="m-btn" onclick="setMode(this,'ripple')">Ripple</button>
+    </div>
+    <span class="head-spacer"></span>
+    <div class="level-meter" id="levelMeter">
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+      <div class="level-bar" style="height:6px;background:var(--green)"></div>
+    </div>
+    <button class="export-btn" id="exportBtn" onclick="startExport()">⬇ Export Video</button>
+  </header>
+
+  <div class="ed-main">
+    <div class="canvas-wrap">
+      <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <div class="fx-panel">
+
+      <div class="fx-sec">
+        <h5>🔊 Volume</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Volume</span><span id="volLbl">100%</span></div>
+          <input type="range" id="volR" min="0" max="200" value="100" oninput="fx.vol(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>🎛 Equalizer</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Bass</span><span id="bassLbl">0 dB</span></div>
+          <input type="range" id="bassR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'bass')">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Mid</span><span id="midLbl">0 dB</span></div>
+          <input type="range" id="midR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'mid')">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Treble</span><span id="trebLbl">0 dB</span></div>
+          <input type="range" id="trebR" min="-15" max="15" value="0" step=".5" oninput="fx.eq(this,'treb')">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>🌊 Reverb</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Wet</span><span id="rvbLbl">0%</span></div>
+          <input type="range" id="rvbR" min="0" max="100" value="0" oninput="fx.reverb(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>🔁 Delay / Echo</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Wet</span><span id="dlyWLbl">0%</span></div>
+          <input type="range" id="dlyWR" min="0" max="100" value="0" oninput="fx.dlyW(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Time</span><span id="dlyTLbl">350ms</span></div>
+          <input type="range" id="dlyTR" min="50" max="1000" value="350" oninput="fx.dlyT(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Feedback</span><span id="fbLbl">30%</span></div>
+          <input type="range" id="fbR" min="0" max="85" value="30" oninput="fx.fb(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>🎨 Visual</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Hue</span><span id="hueLbl">220°</span></div>
+          <input type="range" id="hueR" min="0" max="360" value="220" oninput="fx.hue(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Intensity</span><span id="intLbl">80%</span></div>
+          <input type="range" id="intR" min="10" max="100" value="80" oninput="fx.int(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Overlay</span><span id="ovrLbl">45%</span></div>
+          <input type="range" id="ovrR" min="0" max="80" value="45" oninput="fx.ovr(this)">
+        </div>
+      </div>
+
+      <div class="fx-div"></div>
+
+      <div class="fx-sec">
+        <h5>⚡ Compressor</h5>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Threshold</span><span id="cmpLbl">-24 dB</span></div>
+          <input type="range" id="cmpR" min="-60" max="0" value="-24" oninput="fx.cmp(this)">
+        </div>
+        <div class="fx-row">
+          <div class="fx-lbl"><span>Ratio</span><span id="ratLbl">4:1</span></div>
+          <input type="range" id="ratR" min="1" max="20" value="4" oninput="fx.rat(this)">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tl-wrap">
+    <div class="tl-transport">
+      <button class="t-btn" onclick="seekStart()" title="Go to start (Home)">⏮</button>
+      <button class="t-btn play" id="playBtn" onclick="togglePlay()" title="Play/Pause (Space)">▶</button>
+      <button class="t-btn" onclick="stopAll()" title="Stop (S)">⏹</button>
+      <button class="t-btn" onclick="seekEnd()" title="Go to end (End)">⏭</button>
+      <span style="font-size:.72rem;color:var(--dim);margin-left:.25rem">
+        [Space] Play · [S] Stop · [←/→] Seek 5s
+      </span>
+      <span class="tl-time" id="tlTime">0:00.0 / 0:00.0</span>
+    </div>
+    <canvas id="tlCanvas"></canvas>
+  </div>
+</div>
+
+<div class="exp-overlay" id="expOverlay">
+  <div class="exp-card">
+    <div class="spinner"></div>
+    <h3>Exporting Video…</h3>
+    <p id="expStatus">Preparing…</p>
+    <div class="exp-bar-wrap"><div class="exp-bar" id="expBar"></div></div>
+    <button class="cancel-btn" onclick="cancelExport()">Cancel</button>
+  </div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
